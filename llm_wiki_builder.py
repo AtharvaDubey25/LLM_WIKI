@@ -8,8 +8,8 @@ from typing import Any
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import ChatOllama
 
-MODEL_NAME = "gemma4:e4b"
-OBSIDIAN_DIR = Path("/Users/nariman/Documents/nariman")
+MODEL_NAME = "gemma4:e2b"
+OBSIDIAN_DIR = Path(r"C:\Atharva thinking space\Atharva's Space")
 RAW_DIR = OBSIDIAN_DIR / "Clippings"
 WIKI_DIR = OBSIDIAN_DIR / "AI Wiki"
 SOURCES_DIR = WIKI_DIR / "sources"
@@ -109,7 +109,11 @@ def slugify(value: str) -> str:
 def invoke_json(template: str, **kwargs: Any) -> dict[str, Any]:
     prompt = ChatPromptTemplate.from_template(template)
     chain = prompt | llm
-    return json.loads(chain.invoke(kwargs).content)
+    content = chain.invoke(kwargs).content.strip()
+    if content.startswith("```"):
+        content = re.sub(r"^```\w*\n?", "", content)
+        content = re.sub(r"\n?```$", "", content)
+    return json.loads(content)
 
 
 def get_source_page_path(source_slug: str) -> Path:

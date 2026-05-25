@@ -4,12 +4,13 @@ from urllib.parse import quote
 
 import streamlit as st
 from langchain.agents import create_agent
+from langchain_core.messages import AIMessageChunk
 from langchain_core.tools import tool
 from langchain_ollama import ChatOllama
 from langgraph.checkpoint.memory import MemorySaver
 
-MODEL_NAME = "gemma4:e4b"
-OBSIDIAN_DIR = Path("/Users/nariman/Documents/nariman")
+MODEL_NAME = "gemma4:e2b"
+OBSIDIAN_DIR = Path(r"C:\Atharva thinking space\Atharva's Space")
 WIKI_DIR = OBSIDIAN_DIR / "AI Wiki"
 INDEX_FILE = WIKI_DIR / "index.md"
 VAULT_NAME = OBSIDIAN_DIR.name
@@ -112,7 +113,7 @@ wiki_agent = create_agent(
 st.title("LLM Wiki Agent")
 st.caption("Query your Obsidian knowledge base.")
 
-if "messages" in st.session_state:
+if "messages" not in st.session_state:
     st.session_state["messages"] = [{"role": "assistant", "content": "How can I help you?"}]
 
 for message in st.session_state["messages"]:
@@ -124,18 +125,22 @@ if question:
     st.session_state["messages"].append({"role": "user", "content": question})
     st.chat_message("user").write(question)
 
-    result = wiki_agent.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": question
-                }
-            ]
-        },
-        config={"configurable": {"thread_id": "1"}}
-    )
+    with st.chat_message("assistant"):
+        thinking = st.empty()
+        answer = st.empty()
+        thinking.markdown("🤔 **Thinking...**")
 
-    answer = result["messages"][-1].content
-    st.session_state["messages"].append({"role": "assistant", "content": answer})
-    st.chat_message("assistant").write(answer)
+        full_response = ""
+        for msg_chunk, _ in wiki_agent.stream(
+            {"messages": [{"role": "user", "content": question}]},
+            config={"configurable": {"thread_id": "1"}},
+            stream_mode="messages",
+        ):
+            if isinstance(msg_chunk, AIMessageChunk) and msg_chunk.content:
+                if not full_response:
+                    thinking.empty()
+                full_response += msg_chunk.content
+                answer.markdown(full_response + "▌")
+        answer.markdown(full_response)
+
+    st.session_state["messages"].append({"role": "assistant", "content": full_response})
